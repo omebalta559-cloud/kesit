@@ -327,7 +327,15 @@ function draw() {
   ctx.fillRect(0, 0, S.W, S.H);
 
   const R = roles();
-  drawBackdrop(ctx, S.backdrop.type, t, S.W, S.H, R);
+
+  // Üstünü tamamen kapatan bir katman varsa zemini çizmenin anlamı yok.
+  // Açılış klibi kendi zeminini çiziyor; "doldur" modundaki video da tam kaplıyor.
+  const ustunuKapatan = S.clips.some((c, i) => {
+    if (t < c.start || t >= c.start + c.dur) return false;
+    if (clipAlpha(c, i, t) < 1) return false;
+    return c.kind === 'intro' || (c.fit === 'cover' && c.el && c.el.videoWidth);
+  });
+  if (!ustunuKapatan) drawBackdrop(ctx, S.backdrop.type, t, S.W, S.H, R);
 
   S.clips.forEach((c, i) => {
     if (t < c.start || t >= c.start + c.dur) return;

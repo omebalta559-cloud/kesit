@@ -113,8 +113,29 @@ const BACKDROPS = [
   ['waves', 'Dalgalar'],
 ];
 
+/* Zeminler yumuşak geçişlerden oluştuğu için tam çözünürlükte çizmek gereksiz.
+   Küçük bir ara katmana çizip büyütmek görsel olarak aynı, ~16 kat ucuz. */
+let _bdCanvas = null, _bdCtx = null;
+const BACKDROP_MAX_W = 512;
+
 function drawBackdrop(ctx, type, t, W, H, roles) {
   if (!type || type === 'none') return;
+  if (W <= BACKDROP_MAX_W) { paintBackdrop(ctx, type, t, W, H, roles); return; }
+
+  const s = BACKDROP_MAX_W / W;
+  const w = Math.round(W * s), h = Math.round(H * s);
+  if (!_bdCanvas) {
+    _bdCanvas = document.createElement('canvas');
+    _bdCtx = _bdCanvas.getContext('2d');
+  }
+  if (_bdCanvas.width !== w || _bdCanvas.height !== h) {
+    _bdCanvas.width = w; _bdCanvas.height = h;
+  }
+  paintBackdrop(_bdCtx, type, t, w, h, roles);
+  ctx.drawImage(_bdCanvas, 0, 0, W, H);
+}
+
+function paintBackdrop(ctx, type, t, W, H, roles) {
   const { deep, base, vivid, light } = roles;
 
   ctx.save();
