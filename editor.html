@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kesit — Editör</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="index.html" title="Tanıtım sayfasına dön">
+    <span class="logo">◨</span>
+    <span class="name">Kesit</span>
+    <span class="tag">editör</span>
+  </a>
+  <div class="topbar-actions">
+    <button class="btn btn-ghost btn-screen" id="btnScreen" title="Sitenizi gezerken kaydedin">Ekran kaydet</button>
+    <span class="sep"></span>
+    <label class="btn btn-ghost">
+      Video<input type="file" id="fileVideo" accept="video/*" multiple hidden>
+    </label>
+    <label class="btn btn-ghost">
+      Müzik<input type="file" id="fileAudio" accept="audio/*" multiple hidden>
+    </label>
+    <label class="btn btn-ghost">
+      Görsel<input type="file" id="fileImage" accept="image/*" hidden>
+    </label>
+    <button class="btn btn-ghost" id="btnAddText">Metin</button>
+    <span class="sep"></span>
+    <button class="btn btn-primary" id="btnExport">Dışa aktar</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- SOL: sekmeli panel -->
+  <aside class="panel panel-left">
+    <div class="tabs">
+      <button class="tab on" data-tab="media">Medya</button>
+      <button class="tab" data-tab="tpl">Şablon</button>
+      <button class="tab" data-tab="brand">Marka</button>
+    </div>
+
+    <div class="tab-page" data-page="media">
+      <div class="media-list" id="mediaList"></div>
+    </div>
+
+    <div class="tab-page" data-page="tpl" hidden>
+      <div class="scroll-pad">
+        <div id="tplPanel"></div>
+        <div class="tpl-note" id="tplNote"></div>
+      </div>
+    </div>
+
+    <div class="tab-page" data-page="brand" hidden>
+      <div class="scroll-pad" id="brandPanel"></div>
+    </div>
+  </aside>
+
+  <!-- ORTA: önizleme -->
+  <section class="stage">
+    <div class="stage-canvas-wrap">
+      <canvas id="preview" width="1280" height="720"></canvas>
+      <div class="stage-badge" id="stageBadge">1280×720</div>
+    </div>
+
+    <div class="transport">
+      <button class="tbtn" id="btnStart" title="Başa dön">⏮</button>
+      <button class="tbtn tbtn-play" id="btnPlay" title="Oynat / Duraklat">▶</button>
+      <button class="tbtn" id="btnEnd" title="Sona git">⏭</button>
+      <div class="time" id="timeLabel">00:00.0 / 00:00.0</div>
+      <div class="scrub-wrap">
+        <input type="range" id="scrub" min="0" max="1000" value="0" step="1">
+      </div>
+      <select id="ratio" class="mini-select" title="En-boy oranı">
+        <option value="1280x720">16:9 · 1280×720</option>
+        <option value="1920x1080">16:9 · 1920×1080</option>
+        <option value="1080x1920">9:16 · 1080×1920</option>
+        <option value="1080x1080">1:1 · 1080×1080</option>
+      </select>
+    </div>
+  </section>
+
+  <!-- SAĞ: özellikler -->
+  <aside class="panel panel-right">
+    <div class="panel-head">Özellikler</div>
+    <div id="inspector" class="inspector">
+      <div class="empty">Timeline’dan bir öğe seç.</div>
+    </div>
+  </aside>
+</main>
+
+<!-- ALT: timeline -->
+<footer class="timeline">
+  <div class="tl-head">
+    <div class="tl-title">Timeline</div>
+    <div class="tl-zoom">
+      <span>Yakınlaştır</span>
+      <input type="range" id="zoom" min="20" max="300" value="80">
+    </div>
+  </div>
+
+  <div class="tl-body">
+    <div class="tl-labels">
+      <div class="tl-label">Video</div>
+      <div class="tl-label">Metin</div>
+      <div class="tl-label">Grafik</div>
+      <div class="tl-label">Ses</div>
+    </div>
+    <div class="tl-scroll" id="tlScroll">
+      <div class="tl-inner" id="tlInner">
+        <div class="tl-ruler" id="tlRuler"></div>
+        <div class="tl-track" id="trackVideo"></div>
+        <div class="tl-track" id="trackText"></div>
+        <div class="tl-track" id="trackImage"></div>
+        <div class="tl-track" id="trackAudio"></div>
+        <div class="playhead" id="playhead"></div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- dışa aktarma -->
+<div class="modal-back" id="exportModal" hidden>
+  <div class="modal">
+    <h3 id="expTitle">Dışa aktarılıyor…</h3>
+    <p class="modal-note" id="expNote">Kayıt gerçek zamanlı yapılır; videonun süresi kadar sürer. Bu sekmeyi arka plana alma.</p>
+    <div class="bar"><div class="bar-fill" id="expBar"></div></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="expCancel">İptal</button>
+      <a class="btn btn-primary" id="expDownload" hidden download="kesit-video.webm">İndir</a>
+    </div>
+  </div>
+</div>
+
+<script src="visuals.js"></script>
+<script src="templates.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
