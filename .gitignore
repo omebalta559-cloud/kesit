@@ -1,0 +1,18 @@
+# gecici test dosyalari (headless chrome testinde uretiliyor)
+_test.html
+*.log
+
+# gizli bilgiler - bu projede yok, kazara eklenmesine karsi
+.env
+.env.*
+*.pem
+*.key
+
+# isletim sistemi
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# editor
+.vscode/
+.idea/
