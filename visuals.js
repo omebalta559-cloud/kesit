@@ -251,6 +251,66 @@ function paintBackdrop(ctx, type, t, W, H, roles) {
 }
 
 /* =========================================================
+   Dekor: kliplerin üstüne çizilen sabit grafik öğeler.
+   Yazıya ek olarak videoya kimlik veren kısım burası.
+   ========================================================= */
+function drawDecor(ctx, d, t, toplam, W, H, roles) {
+  if (!d) return;
+  const { vivid, light } = roles;
+  ctx.save();
+
+  // marka renginde ince çerçeve
+  if (d.frame) {
+    const k = Math.max(2, H * 0.0045);
+    ctx.strokeStyle = rgba(vivid, 0.85);
+    ctx.lineWidth = k;
+    ctx.strokeRect(k / 2, k / 2, W - k, H - k);
+  }
+
+  // köşe aksanları (L şeklinde kısa çizgiler)
+  if (d.corners) {
+    const m = Math.round(W * 0.035);       // kenardan boşluk
+    const u = Math.round(W * 0.045);       // kol uzunluğu
+    const k = Math.max(2, H * 0.005);
+    ctx.strokeStyle = rgba(light, 0.9);
+    ctx.lineWidth = k;
+    ctx.lineCap = 'square';
+    const kose = (cx, cy, sx, sy) => {
+      ctx.beginPath();
+      ctx.moveTo(cx + sx * u, cy);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx, cy + sy * u);
+      ctx.stroke();
+    };
+    kose(m, m, 1, 1);
+    kose(W - m, m, -1, 1);
+    kose(m, H - m, 1, -1);
+    kose(W - m, H - m, -1, -1);
+  }
+
+  // altta ilerleme çubuğu
+  if (d.bar && toplam > 0) {
+    const h = Math.max(3, H * 0.008);
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.fillRect(0, H - h, W, h);
+    const g = ctx.createLinearGradient(0, 0, W, 0);
+    g.addColorStop(0, vivid);
+    g.addColorStop(1, light);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, H - h, W * cl01(t / toplam), h);
+  }
+
+  // üst köşede ince marka şeridi
+  if (d.tab) {
+    const w = W * 0.16, h = H * 0.007;
+    ctx.fillStyle = rgba(vivid, 0.95);
+    ctx.fillRect(W * 0.035, H * 0.035, w, h);
+  }
+
+  ctx.restore();
+}
+
+/* =========================================================
    Açılış (intro) klipleri
    p = 0..1 ilerleme, roles = videodan çıkarılmış renkler
    ========================================================= */

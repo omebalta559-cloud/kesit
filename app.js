@@ -23,6 +23,7 @@ const S = {
   exporting: false,
   brand: loadBrand(),
   backdrop: { type: 'none', dur: 10 },
+  decor: { frame: false, corners: false, bar: false, tab: false },
   palette: null,          // kullanıcının videosundan çıkarılan renkler
 };
 
@@ -312,17 +313,23 @@ function total() {
 /* =========================================================
    Çizim
    ========================================================= */
-function drawFit(el, mode) {
+/* zoom: klip boyunca yavaş yakınlaşma (Ken Burns). Ekran kaydı gibi hareketsiz
+   görüntüleri canlandırır. p = klipteki ilerleme (0..1) */
+function drawFit(el, mode, zoom = 0, p = 0) {
   const sw = el.videoWidth, sh = el.videoHeight;
   if (!sw || !sh) return;
   const sr = sw / sh, dr = S.W / S.H;
+  const k = 1 + (zoom || 0) * clamp(p, 0, 1);
+
   if (mode === 'cover') {
     let cw, ch;
     if (sr > dr) { ch = sh; cw = sh * dr; } else { cw = sw; ch = sw / dr; }
+    cw /= k; ch /= k;
     ctx.drawImage(el, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, S.W, S.H);
   } else {
     let dw, dh;
     if (sr > dr) { dw = S.W; dh = S.W / sr; } else { dh = S.H; dw = S.H * sr; }
+    dw *= k; dh *= k;
     ctx.drawImage(el, (S.W - dw) / 2, (S.H - dh) / 2, dw, dh);
   }
 }
@@ -377,9 +384,14 @@ function draw() {
       drawIntro(ctx, c.style, (t - c.start) / c.dur, S.W, S.H, S.brand, R, logoImg);
     } else {
       ctx.filter = filterStr(c.filter);
-      drawFit(c.el, c.fit);
+      drawFit(c.el, c.fit, c.zoom || 0, (t - c.start) / c.dur);
     }
   });
+
+  // dekor: kliplerin üstünde, yazıların altında
+  ctx.filter = 'none';
+  ctx.globalAlpha = 1;
+  drawDecor(ctx, S.decor, t, total(), S.W, S.H, R);
 
   ctx.filter = 'none';
   ctx.globalAlpha = 1;
@@ -425,36 +437,83 @@ function drawText(x, t) {
   ctx.textAlign = x.align;
   ctx.textBaseline = 'middle';
 
-  // giriş/çıkış yumuşatma (0.25sn)
-  const local = t - x.start, f = 0.25;
-  let a = 1;
-  if (local < f) a = local / f;
-  if (x.dur - local < f) a = Math.min(a, (x.dur - local) / f);
-  ctx.globalAlpha = clamp(a, 0, 1);
+  /* ---- giriş / çıkış hareketi ---- */
+  const local = t - x.start;
+  const girisSure = 0.5, cikisSure = 0.32;
+  const e = ease(clamp(local / girisSure, 0, 1));           // yumuşayan giriş
+  const cikis = clamp((x.dur - local) / cikisSure, 0, 1);
+
+  const anim = x.anim || 'fade';
+  let dx = 0, dy = 0, olcek = 1, perde = 1;
+  if (anim === 'up') dy = (1 - e) * px * 1.1;
+  else if (anim === 'down') dy = -(1 - e) * px * 1.1;
+  else if (anim === 'left') dx = (1 - e) * S.W * 0.07;
+  else if (anim === 'right') dx = -(1 - e) * S.W * 0.07;
+  else if (anim === 'scale') olcek = 0.84 + e * 0.16;
+  else if (anim === 'wipe') perde = e;
+
+  // Kayan/ölçeklenen girişlerde opaklık daha hızlı dolsun, hareket görünür kalsın
+  const a = clamp(Math.min(anim === 'fade' ? e : Math.min(1, e * 1.8), cikis), 0, 1);
 
   const lh = px * 1.25;
   const cx = (x.x / 100) * S.W;
   const cy = (x.y / 100) * S.H - ((lines.length - 1) * lh) / 2;
 
-  if (x.bgOn) {
-    let w = 0;
-    lines.forEach((l) => w = Math.max(w, ctx.measureText(l).width));
+  let w = 0;
+  lines.forEach((l) => w = Math.max(w, ctx.measureText(l).width));
+
+  ctx.save();
+  ctx.globalAlpha = a;
+  if (olcek !== 1) {
+    ctx.translate(cx, cy);
+    ctx.scale(olcek, olcek);
+    ctx.translate(-cx, -cy);
+  }
+  ctx.translate(dx, dy);
+
+  if (x.band) {
+    /* ---- tasarlanmış alt bant: koyu şerit + marka renginde dikey aksan ---- */
+    const padX = px * 0.55, padY = px * 0.34;
+    const bh = lines.length * lh + padY * 2 - (lh - px) * 0.5;
+    const by = cy - lh / 2 - padY + (lh - px) * 0.25;
+    let bx = cx - padX;
+    if (x.align === 'center') bx = cx - (w + padX * 2) / 2;
+    if (x.align === 'right') bx = cx - w - padX;
+    const bw = (w + padX * 2) * perde;
+    const aksan = px * 0.14;
+
+    ctx.fillStyle = 'rgba(8,10,14,.72)';
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = x.bg;
+    ctx.fillRect(bx, by, Math.min(aksan, bw), bh);
+  } else if (x.bgOn) {
     const padX = px * 0.4, padY = px * 0.25;
-    const bw = w + padX * 2, bh = lines.length * lh + padY * 2 - (lh - px) * 0.6;
+    const bw = (w + padX * 2) * perde, bh = lines.length * lh + padY * 2 - (lh - px) * 0.6;
     let bx = cx - bw / 2;
     if (x.align === 'left') bx = cx - padX;
     if (x.align === 'right') bx = cx - bw + padX;
     ctx.fillStyle = x.bg;
-    ctx.globalAlpha = clamp(a, 0, 1) * 0.55;
+    ctx.globalAlpha = a * 0.55;
     roundRect(bx, cy - lh / 2 - padY + (lh - px) * 0.3, bw, bh, px * 0.15);
-    ctx.globalAlpha = clamp(a, 0, 1);
+    ctx.globalAlpha = a;
+  }
+
+  // perde animasyonunda yazı da soldan açılsın
+  if (perde < 1) {
+    const kw = S.W * perde;
+    ctx.beginPath();
+    ctx.rect(x.align === 'right' ? S.W - kw : (x.align === 'center' ? cx - kw / 2 : cx - px), 0, kw + px, S.H);
+    ctx.clip();
   }
 
   ctx.fillStyle = x.color;
-  ctx.shadowColor = 'rgba(0,0,0,.6)';
-  ctx.shadowBlur = px * 0.12;
+  ctx.shadowColor = 'rgba(0,0,0,.55)';
+  ctx.shadowBlur = px * 0.14;
+  ctx.shadowOffsetY = px * 0.03;
   lines.forEach((l, i) => ctx.fillText(l, cx, cy + i * lh));
   ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+  ctx.restore();
   ctx.globalAlpha = 1;
 }
 
@@ -1273,6 +1332,9 @@ function applyTemplate(tpl) {
 
   // arka plan zemini — videon yoksa görüntüyü bu taşır
   S.backdrop.type = tpl.backdrop || 'mesh';
+  // dekor (çerçeve, köşe aksanları, ilerleme çubuğu) ve yavaş yakınlaşma
+  S.decor = { frame: false, corners: false, bar: false, tab: false, ...(tpl.decor || {}) };
+  S.clips.forEach((c) => { if (c.kind !== 'intro') c.zoom = tpl.zoom || 0; });
 
   // metinlerin yayılacağı süre: açılıştan sonraki video, yoksa şablonun kendi süresi
   let T = 0;

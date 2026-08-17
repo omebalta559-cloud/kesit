@@ -20,6 +20,8 @@ const TEMPLATES = [
   intro: 'reveal',
   introDur: 3.2,
   backdrop: 'mesh',
+  decor: { corners: true, bar: true, tab: true },
+  zoom: 0.08,                       // klip boyunca %8 yavaş yakınlaşma
   swatch: ['#1b2a44', '#4f8cff'],
   build(b, T, o) {
     const A = o.intro ? 0 : T * 0.22;
@@ -29,21 +31,29 @@ const TEMPLATES = [
 
     if (!o.intro) {
       texts.push(
-        { text: b.name, start: 0, dur: A, x: 50, y: 44, size: 9, weight: 900,
+        { text: b.name, start: 0, dur: A, x: 50, y: 44, size: 9, weight: 900, anim: 'scale',
           color: b.ink, bg: '#000000', bgOn: false, font: b.font, align: 'center' },
-        { text: b.tagline, start: 0.4, dur: A - 0.4, x: 50, y: 56, size: 3.6, weight: 400,
+        { text: b.tagline, start: 0.4, dur: A - 0.4, x: 50, y: 56, size: 3.6, weight: 400, anim: 'up',
           color: b.ink, bg: '#000000', bgOn: false, font: b.font, align: 'center' },
       );
     }
+
+    // üç özellik: soldan kayan, aksan çizgili alt bantlar + numara
     [b.f1, b.f2, b.f3].forEach((f, i) => {
-      texts.push({ text: f, start: A + each * i, dur: each - 0.15, x: 6, y: 86, size: 4.2,
-        weight: 700, color: b.ink, bg: b.accent, bgOn: true, font: b.font, align: 'left' });
+      const s = A + each * i;
+      texts.push(
+        { text: '0' + (i + 1), start: s, dur: each - 0.2, x: 6, y: 77, size: 2.6, weight: 800,
+          anim: 'left', color: b.accent, bg: '#000000', bgOn: false, font: b.font, align: 'left' },
+        { text: f, start: s + 0.12, dur: each - 0.32, x: 6, y: 85, size: 4.2, weight: 700,
+          anim: 'left', band: true, color: b.ink, bg: b.accent, font: b.font, align: 'left' },
+      );
     });
+
     texts.push(
-      { text: b.cta, start: T - C, dur: C, x: 50, y: 46, size: 6, weight: 800,
+      { text: b.cta, start: T - C, dur: C, x: 50, y: 45, size: 6.2, weight: 800, anim: 'scale',
         color: b.ink, bg: '#000000', bgOn: false, font: b.font, align: 'center' },
-      { text: b.url, start: T - C + 0.3, dur: C - 0.3, x: 50, y: 58, size: 4, weight: 600,
-        color: b.ink, bg: b.accent, bgOn: true, font: b.font, align: 'center' },
+      { text: b.url, start: T - C + 0.35, dur: C - 0.35, x: 50, y: 58, size: 3.8, weight: 700,
+        anim: 'up', band: true, color: b.ink, bg: b.accent, font: b.font, align: 'center' },
     );
     return { texts, logo: { x: 90, y: 10, size: 11, start: 0, dur: T }, trans: 'cross', transDur: 0.8 };
   },
