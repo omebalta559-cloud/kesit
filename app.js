@@ -99,6 +99,30 @@ const ctx = cv.getContext('2d');
 $('#fileVideo').addEventListener('change', (e) => loadFiles(e.target.files, 'video'));
 $('#fileAudio').addEventListener('change', (e) => loadFiles(e.target.files, 'audio'));
 
+/* Chrome'un MediaRecorder'i urettigi WebM'e sure bilgisi yazmiyor: dosya
+   oynatilabiliyor ama duration = Infinity donuyor. Ekran kaydinda hep boyle.
+   Cozum: kaynagi sonuna sarip gercek sureyi okumak. */
+function resolveDuration(el, cb) {
+  if (isFinite(el.duration) && el.duration > 0) { cb(el.duration); return; }
+
+  let bitti = false;
+  const tamam = (d) => {
+    if (bitti) return;
+    bitti = true;
+    el.removeEventListener('timeupdate', onUpdate);
+    try { el.currentTime = 0; } catch (e) {}
+    cb(isFinite(d) && d > 0 ? d : 0);
+  };
+  const onUpdate = () => {
+    const d = isFinite(el.duration) ? el.duration : el.currentTime;
+    if (d > 0) tamam(d);
+  };
+
+  el.addEventListener('timeupdate', onUpdate);
+  try { el.currentTime = 1e101; } catch (e) { tamam(0); }
+  setTimeout(() => tamam(el.currentTime || 0), 3000);   // takilirsa birak
+}
+
 function loadFiles(files, kind) {
   [...files].forEach((f) => {
     const url = URL.createObjectURL(f);
@@ -106,16 +130,18 @@ function loadFiles(files, kind) {
     el.preload = 'auto';
     el.src = url;
     el.addEventListener('loadedmetadata', () => {
-      const m = {
-        id: uid(), kind, name: f.name, url,
-        duration: el.duration || 0,
-        w: el.videoWidth || 0, h: el.videoHeight || 0,
-      };
-      S.media.push(m);
-      if (kind === 'video') makeThumb(m);
-      renderMedia();
-      // ilk medya otomatik timeline'a
-      if (kind === 'video' && S.clips.length === 0) addClip(m.id);
+      resolveDuration(el, (dur) => {
+        const m = {
+          id: uid(), kind, name: f.name, url,
+          duration: dur,
+          w: el.videoWidth || 0, h: el.videoHeight || 0,
+        };
+        S.media.push(m);
+        if (kind === 'video') makeThumb(m);
+        renderMedia();
+        // ilk medya otomatik timeline'a
+        if (kind === 'video' && S.clips.length === 0) addClip(m.id);
+      });
     }, { once: true });
   });
   // aynı dosyayı tekrar seçebilmek için
@@ -250,12 +276,18 @@ $('#btnAddText').onclick = () => {
 /* =========================================================
    Yerleşim (video klipleri ardışık, geçişte bindirmeli)
    ========================================================= */
+const MAX_SURE = 4 * 3600;   // 4 saat: gecerli hicbir kurgu bunu asmaz
+
+// Bozuk bir sure (Infinity / NaN) timeline'i sonsuz donguye sokabilir.
+const guvenliSure = (v, varsayilan) =>
+  (isFinite(v) && v > 0) ? Math.min(v, MAX_SURE) : varsayilan;
+
 function layout() {
   let t = 0;
   S.clips.forEach((c, i) => {
     c.dur = c.kind === 'intro'
-      ? Math.max(0.5, c.dur)
-      : Math.max(0.1, (c.out - c.in) / c.speed);
+      ? guvenliSure(c.dur, 3.2)
+      : guvenliSure((c.out - c.in) / c.speed, 5);
     let ov = 0;
     if (i > 0 && c.trans.type === 'cross') {
       ov = Math.min(c.trans.dur, c.dur / 2, S.clips[i - 1].dur / 2);
@@ -274,7 +306,7 @@ function total() {
   S.images.forEach((g) => t = Math.max(t, g.start + g.dur));
   S.audios.forEach((a) => t = Math.max(t, a.start + a.dur));
   if (S.backdrop.type !== 'none') t = Math.max(t, S.backdrop.dur);
-  return t;
+  return guvenliSure(t, 0);
 }
 
 /* =========================================================
@@ -555,7 +587,7 @@ function updateTime() {
    Timeline render + etkileşim
    ========================================================= */
 function renderTimeline() {
-  const T = Math.max(total(), 10);
+  const T = Math.min(Math.max(total(), 10), MAX_SURE);
   const w = T * S.pxPerSec + 200;
   $('#tlInner').style.width = w + 'px';
 
