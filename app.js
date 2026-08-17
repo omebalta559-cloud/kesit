@@ -378,8 +378,18 @@ function drawImageLayer(g, t) {
 }
 
 function drawText(x, t) {
-  const px = (x.size / 100) * S.H;
-  ctx.font = `${x.weight} ${px}px "${x.font}", sans-serif`;
+  const lines = String(x.text).split('\n');
+  let px = (x.size / 100) * S.H;
+  const setF = () => { ctx.font = `${x.weight} ${px}px "${x.font}", sans-serif`; };
+  setF();
+
+  // Boyut yükseklige oranli; dikey formatta genislik sinirlayici oluyor.
+  // Satirlar tuvale sigmiyorsa yaziyi kucult.
+  const maxW = S.W * 0.9;
+  let widest = 0;
+  lines.forEach((l) => widest = Math.max(widest, ctx.measureText(l).width));
+  if (widest > maxW) { px *= maxW / widest; setF(); }
+
   ctx.textAlign = x.align;
   ctx.textBaseline = 'middle';
 
@@ -390,7 +400,6 @@ function drawText(x, t) {
   if (x.dur - local < f) a = Math.min(a, (x.dur - local) / f);
   ctx.globalAlpha = clamp(a, 0, 1);
 
-  const lines = String(x.text).split('\n');
   const lh = px * 1.25;
   const cx = (x.x / 100) * S.W;
   const cy = (x.y / 100) * S.H - ((lines.length - 1) * lh) / 2;

@@ -314,7 +314,7 @@ function drawIntro(ctx, style, p, W, H, brand, roles, logoImg) {
     ctx.beginPath();
     ctx.rect(W / 2 - bw / 2, 0, bw, H);
     ctx.clip();
-    setFont(H * 0.108, 900);
+    fitFont(name, H * 0.108, 900);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = ink;
@@ -325,7 +325,7 @@ function drawIntro(ctx, style, p, W, H, brand, roles, logoImg) {
     // slogan
     const c = ease(cl01((p - 0.45) / 0.4));
     ctx.globalAlpha = c;
-    setFont(H * 0.034, 400);
+    fitFont(tag, H * 0.034, 400);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillStyle = rgba(ink, 0.82);
@@ -348,7 +348,7 @@ function drawIntro(ctx, style, p, W, H, brand, roles, logoImg) {
     const dx = (1 - b) * W * 0.28;
 
     ctx.globalAlpha = b;
-    setFont(H * 0.1, 900);
+    fitFont(name, H * 0.1, 900, 0.82);   // sola hizali, W*0.09'dan basliyor
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = ink;
@@ -358,7 +358,7 @@ function drawIntro(ctx, style, p, W, H, brand, roles, logoImg) {
     ctx.fillStyle = rgba(vivid, 0.95);
     ctx.fillRect(W * 0.09 - dx, H * 0.535, W * 0.16 * b, H * 0.006);
 
-    setFont(H * 0.033, 400);
+    fitFont(tag, H * 0.033, 400, 0.82);
     ctx.fillStyle = rgba(ink, 0.8);
     ctx.fillText(tag, W * 0.09 + dx, H * 0.61);
     ctx.globalAlpha = 1;
@@ -392,12 +392,12 @@ function drawIntro(ctx, style, p, W, H, brand, roles, logoImg) {
 
     const b = ease(cl01((p - 0.3) / 0.45));
     ctx.globalAlpha = b;
-    setFont(H * 0.095 * (0.94 + b * 0.06), 800);
+    fitFont(name, H * 0.095 * (0.94 + b * 0.06), 800);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = ink;
     ctx.fillText(name, cx, cy + H * (logoImg ? 0.13 : 0.02));
-    setFont(H * 0.032, 400);
+    fitFont(tag, H * 0.032, 400);
     ctx.textBaseline = 'top';
     ctx.fillStyle = rgba(ink, 0.78);
     ctx.fillText(tag, cx, cy + H * (logoImg ? 0.17 : 0.06));
@@ -422,12 +422,12 @@ function drawIntro(ctx, style, p, W, H, brand, roles, logoImg) {
 
     const b = ease(cl01((p - 0.52) / 0.38));
     ctx.globalAlpha = b;
-    setFont(H * 0.098, 900);
+    fitFont(name, H * 0.098, 900);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = ink;
     ctx.fillText(name, W / 2, H * 0.51);
-    setFont(H * 0.031, 500);
+    fitFont(tag, H * 0.031, 500);
     ctx.textBaseline = 'top';
     ctx.fillStyle = rgba(ink, 0.8);
     ctx.fillText(tag, W / 2, H * 0.545);
@@ -438,6 +438,17 @@ function drawIntro(ctx, style, p, W, H, brand, roles, logoImg) {
 
   /* ---------------------------------------------------- */
   function setFont(px, w) { ctx.font = `${w} ${px}px "${font}", sans-serif`; }
+
+  /* Punto yukseklige oranli hesaplaniyor; dikey formatta (9:16) genislik
+     sinirlayici oluyor ve uzun isimler tuvali tasiyor. Sigmiyorsa kucult. */
+  function fitFont(txt, px, w, maxFrac) {
+    setFont(px, w);
+    if (!txt) return px;
+    const maxW = W * (maxFrac || 0.88);
+    const m = ctx.measureText(txt).width;
+    if (m > maxW) { px *= maxW / m; setFont(px, w); }
+    return px;
+  }
 
   function logo(cx, cy, h, a, align) {
     if (!logoImg || !logoImg.naturalWidth || a <= 0) return;
