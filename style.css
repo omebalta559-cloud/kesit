@@ -382,8 +382,9 @@ input[type=range]::-moz-range-thumb{
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .stok-kart.yukleniyor{opacity:.45;pointer-events:none}
-.stok-kart.yukleniyor::after{
-  content:"iniyor…";position:absolute;inset:0;display:flex;
+.stok-kart.yukleniyor::after,
+.stok-kart.hatali::after{
+  content:attr(data-durum);position:absolute;inset:0;display:flex;
   align-items:center;justify-content:center;
   background:rgba(0,0,0,.55);color:#fff;font-size:11px;
 }
@@ -393,3 +394,5 @@ input[type=range]::-moz-range-thumb{
   align-items:center;justify-content:center;
   background:rgba(47,143,107,.7);color:#fff;font-size:11px;font-weight:600;
 }
+.stok-kart.hatali{border-color:var(--danger);opacity:1}
+.stok-kart.hatali::after{background:rgba(224,90,90,.75);font-weight:600}

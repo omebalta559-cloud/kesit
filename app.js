@@ -1410,7 +1410,33 @@ function applyTemplate(tpl) {
    ========================================================= */
 const pexelsKey = () => { try { return localStorage.getItem('kesit.pexels') || ''; } catch (e) { return ''; } };
 
-const STOK_ONERI = ['ofis', 'para', 'tasarruf', 'endişeli', 'başarı', 'ekip', 'telefon', 'şehir'];
+const STOK_ONERI = [
+  'endişeli insan', 'para biriktirme', 'fatura', 'borsa',
+  'ofis', 'telefon kullanan', 'başarı', 'ekip',
+];
+
+/* Pexels arsivi Ingilizce etiketli; Turkce arama neredeyse hic sonuc vermiyor.
+   Yazilan kelimeyi sozlukten cevirip oyle ariyoruz. Eslesme yoksa oldugu gibi. */
+const STOK_SOZLUK = {
+  'endişeli': 'worried person', 'endiseli': 'worried person',
+  'endişeli insan': 'worried man money', 'endiseli insan': 'worried man money',
+  'para': 'money', 'para biriktirme': 'saving money', 'tasarruf': 'saving money',
+  'birikim': 'saving money', 'fatura': 'paying bills', 'borç': 'debt stress',
+  'borsa': 'stock market', 'yatırım': 'investment', 'yatirim': 'investment',
+  'grafik': 'growth chart', 'kripto': 'cryptocurrency', 'banka': 'bank',
+  'ofis': 'office work', 'ekip': 'business team', 'toplantı': 'business meeting',
+  'bilgisayar': 'laptop working', 'telefon': 'using phone',
+  'telefon kullanan': 'person using phone', 'başarı': 'success celebration',
+  'basari': 'success celebration', 'mutlu': 'happy person', 'gülümseme': 'smiling person',
+  'şehir': 'city', 'sehir': 'city', 'kahve': 'coffee shop', 'ev': 'home interior',
+  'alışveriş': 'online shopping', 'çalışma': 'working desk', 'calisma': 'working desk',
+  'zaman': 'clock time', 'hedef': 'target goal', 'büyüme': 'business growth',
+};
+
+function stokCevir(q) {
+  const k = q.toLowerCase().trim();
+  return STOK_SOZLUK[k] || q;
+}
 let stokSonuc = [];
 let stokYukleniyor = false;
 
@@ -1443,7 +1469,9 @@ function renderStock() {
       <button class="btn btn-primary" id="pexGo">Ara</button>
     </div>
     <div class="stok-oneri">${STOK_ONERI.map((k) => `<button data-k="${k}">${k}</button>`).join('')}</div>
-    <p class="mini">Yön: <b>${yonEtiketi()}</b> — sahnenin oranına uyanlar aranıyor.</p>
+    <p class="mini">Yön: <b>${yonEtiketi()}</b> — sahnenin oranına uyanlar aranıyor.
+      Arşiv İngilizce etiketli; yaygın Türkçe kelimeler kendiliğinden çevriliyor,
+      sonuç azsa İngilizce dene.</p>
     <div id="pexList" class="stok-list"></div>
     <div class="btn-row"><button class="btn" id="pexReset">Anahtarı değiştir</button></div>`;
 
@@ -1473,9 +1501,10 @@ async function stockSearch(q) {
   list.innerHTML = '<p class="mini">aranıyor…</p>';
   stokYukleniyor = true;
   const yon = S.W > S.H ? 'landscape' : (S.W < S.H ? 'portrait' : 'square');
+  const sorgu = stokCevir(q);
   try {
     const r = await fetch(
-      `https://api.pexels.com/videos/search?query=${encodeURIComponent(q)}&per_page=16&orientation=${yon}`,
+      `https://api.pexels.com/videos/search?query=${encodeURIComponent(sorgu)}&per_page=16&orientation=${yon}`,
       { headers: { Authorization: pexelsKey() } });
     if (r.status === 401) { list.innerHTML = '<p class="mini">Anahtar geçersiz. “Anahtarı değiştir” ile yenisini gir.</p>'; return; }
     if (!r.ok) { list.innerHTML = `<p class="mini">Arama başarısız (${r.status}).</p>`; return; }
@@ -1504,32 +1533,62 @@ function cizStokListe() {
   });
 }
 
-/* Uygun boyuttaki mp4'u sec: cok buyugu bosuna indirilmesin */
+/* 1280 px civarindaki surumu sec. Genislige bakmak yanlisti: dikey videolarda
+   genislik 1080 olur, filtreye takilmazdi ve yedek olarak 4K secilirdi; indirme
+   dakikalarca surup dusuyordu. En uzun kenara bakmak her iki yonde de dogru. */
 function stokDosyaSec(v) {
-  const mp4 = (v.video_files || []).filter((f) => f.file_type === 'video/mp4' && f.link);
+  const mp4 = (v.video_files || []).filter(
+    (f) => f.file_type === 'video/mp4' && f.link && f.width && f.height);
   if (!mp4.length) return null;
-  const uygun = mp4.filter((f) => f.width >= 1100 && f.width <= 2000);
-  const havuz = uygun.length ? uygun : mp4;
-  return havuz.sort((a, b) => a.width - b.width)[havuz.length > 1 && uygun.length ? 0 : havuz.length - 1] || havuz[0];
+  const HEDEF = 1280;
+  return mp4
+    .map((f) => ({ f, uzun: Math.max(f.width, f.height) }))
+    .sort((a, b) => Math.abs(a.uzun - HEDEF) - Math.abs(b.uzun - HEDEF))[0].f;
 }
 
 async function stockAdd(v, el) {
   const dosya = stokDosyaSec(v);
-  if (!dosya) { alert('Bu videonun indirilebilir bir sürümü yok.'); return; }
+  if (!dosya) { stokHata(el, 'sürüm yok'); return; }
+
   el.classList.add('yukleniyor');
+  el.dataset.durum = 'iniyor…';
   try {
     const r = await fetch(dosya.link);
-    if (!r.ok) throw new Error(r.status);
-    const blob = await r.blob();
-    const ad = `stok-${v.id}.mp4`;
-    loadFiles([new File([blob], ad, { type: 'video/mp4' })], 'video');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+
+    // Buyuk dosyalarda kullanici bekledigini bilsin diye yuzde gosteriyoruz
+    const uzunluk = +(r.headers.get('content-length') || 0);
+    let blob;
+    if (uzunluk && r.body && r.body.getReader) {
+      const reader = r.body.getReader();
+      const parcalar = [];
+      let alinan = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        parcalar.push(value);
+        alinan += value.length;
+        el.dataset.durum = '%' + Math.round((alinan / uzunluk) * 100);
+      }
+      blob = new Blob(parcalar, { type: 'video/mp4' });
+    } else {
+      blob = await r.blob();
+    }
+
+    loadFiles([new File([blob], `stok-${v.id}.mp4`, { type: 'video/mp4' })], 'video');
     el.classList.remove('yukleniyor');
     el.classList.add('eklendi');
     setTimeout(() => el.classList.remove('eklendi'), 1500);
   } catch (e) {
     el.classList.remove('yukleniyor');
-    alert('Video indirilemedi. Başka bir tanesini dene.');
+    stokHata(el, 'inmedi');
   }
+}
+
+function stokHata(el, mesaj) {
+  el.classList.add('hatali');
+  el.dataset.durum = mesaj;
+  setTimeout(() => el.classList.remove('hatali'), 2600);
 }
 
 /* =========================================================
