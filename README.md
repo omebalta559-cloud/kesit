@@ -73,6 +73,10 @@ sonra **Profil yükle** ile geri getir. Her müşteri için bir dosya.
 | Minimal | 16:9 | ~12 sn | Perde | Akan gradyan | Slogan ve adres — az yazı |
 | Özellik Turu | 16:9 | ~24 sn | Kayan blok | Izgara | Numaralı 01/02/03 (SaaS, panel) |
 | Lansman Duyurusu | 1:1 | ~10 sn | Nabız | Dalgalar | "Yayında" duyurusu, kampanya |
+| Kinetik Tipografi | 16:9 | ~16 sn | Çubuklar | Akan gradyan | Kelime kelime patlayan yazı, iki yandan giriş |
+| Bölünmüş Ekran | 16:9 | ~20 sn | Kayan blok | Işık lekeleri | Solda renk bloğu + yazı, sağda görüntü |
+| Hızlı Vitrin | 1:1 | ~8 sn | Nabız | Parçacıklar | Çok hızlı ritim, ücretli reklam için |
+| Sakin Kurumsal | 16:9 | ~22 sn | Perde | Akan gradyan | Yavaş geçiş, ince çerçeve, az yazı |
 
 Şablon uygulandığında en-boy oranı, açılış klibi ve arka plan zemini kendiliğinden
 ayarlanır. Timeline'da videon varsa metinler onun uzunluğuna yayılır; yoksa şablonun
@@ -94,11 +98,13 @@ ve ses kalır.
   intro: 'reveal',                   // açılış stili: reveal|slide|pulse|bars
   introDur: 3.2,
   backdrop: 'mesh',                  // none|mesh|flow|grid|bokeh|waves
+  decor: { corners: true, bar: true, tab: true },  // frame|corners|bar|tab|split
+  zoom: 0.08,                        // klip boyunca yavaş yakınlaşma (0 = kapalı)
   build(b, T, o) {                   // b = marka, T = süre, o.intro = açılış var mı
     return {
       texts: [
         { text: b.tagline, start: 0, dur: T * 0.3, x: 50, y: 50, size: 8,
-          weight: 900, color: b.ink, bg: b.accent, bgOn: true,
+          weight: 900, anim: 'words', color: b.ink, bg: b.accent, bgOn: true,
           font: b.font, align: 'center' },
       ],
       logo: { x: 90, y: 10, size: 11, start: 0, dur: T },
@@ -109,7 +115,19 @@ ve ses kalır.
 ```
 `start` değerleri açılış klibine göre değil, **açılıştan sonrasına** göredir —
 kaydırmayı `applyTemplate` yapar.
-`x`, `y`, `size` yüzde cinsindendir (`size` ekran yüksekliğine oranlı).
+`x`, `y`, `size` yüzde cinsindendir (`size` ekran yüksekliğine oranlı; tuvale
+sığmayan yazılar kendiliğinden küçültülür).
+
+**Metin alanları:**
+
+| Alan | Değerler |
+|---|---|
+| `anim` | `fade` · `up` · `down` · `left` · `right` · `scale` · `pop` (yaylanma) · `wipe` (perde) · `words` (kelime kelime) |
+| `band` | `true` → koyu şerit + marka renginde dikey aksan çizgisi |
+| `bgOn` | `true` → yuvarlak köşeli yarı saydam kutu |
+
+**Dekor** (`decor`): `frame` çerçeve · `corners` köşe aksanları · `bar` alttaki
+ilerleme çubuğu · `tab` üst köşe şeridi · `split: 'left'|'right'` bölünmüş ekran bloğu.
 
 ## Editör
 **Kesme & birleştirme** — Çoklu klip, timeline'da yan yana dizilir. Kenardan çekerek

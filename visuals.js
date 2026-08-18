@@ -256,8 +256,23 @@ function paintBackdrop(ctx, type, t, W, H, roles) {
    ========================================================= */
 function drawDecor(ctx, d, t, toplam, W, H, roles) {
   if (!d) return;
-  const { vivid, light } = roles;
+  const { deep, vivid, light } = roles;
   ctx.save();
+
+  // bolunmus ekran: bir yani renk blogu, yazilar orada durur
+  if (d.split) {
+    const sag = d.split === 'right';
+    const w = W * 0.44;
+    const x = sag ? W - w : 0;
+    const g = ctx.createLinearGradient(x, 0, x + w, 0);
+    g.addColorStop(0, rgba(deep, sag ? 0.5 : 0.95));
+    g.addColorStop(1, rgba(deep, sag ? 0.95 : 0.5));
+    ctx.fillStyle = g;
+    ctx.fillRect(x, 0, w, H);
+    const k = Math.max(3, W * 0.004);
+    ctx.fillStyle = rgba(vivid, 0.95);
+    ctx.fillRect(sag ? x : x + w - k, 0, k, H);
+  }
 
   // marka renginde ince çerçeve
   if (d.frame) {

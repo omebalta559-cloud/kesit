@@ -450,6 +450,7 @@ function drawText(x, t) {
   else if (anim === 'left') dx = (1 - e) * S.W * 0.07;
   else if (anim === 'right') dx = -(1 - e) * S.W * 0.07;
   else if (anim === 'scale') olcek = 0.84 + e * 0.16;
+  else if (anim === 'pop') olcek = 0.45 + geriYay(clamp(local / 0.46, 0, 1)) * 0.55;
   else if (anim === 'wipe') perde = e;
 
   // Kayan/ölçeklenen girişlerde opaklık daha hızlı dolsun, hareket görünür kalsın
@@ -510,11 +511,42 @@ function drawText(x, t) {
   ctx.shadowColor = 'rgba(0,0,0,.55)';
   ctx.shadowBlur = px * 0.14;
   ctx.shadowOffsetY = px * 0.03;
-  lines.forEach((l, i) => ctx.fillText(l, cx, cy + i * lh));
+
+  if (anim === 'words' && lines.length === 1) {
+    // kelimeler sirayla, hafifce yukaridan gelerek
+    const kelimeler = lines[0].split(' ').filter(Boolean);
+    const bosluk = ctx.measureText(' ').width;
+    const genislikler = kelimeler.map((k) => ctx.measureText(k).width);
+    const toplam = genislikler.reduce((s, w) => s + w, 0) + bosluk * (kelimeler.length - 1);
+
+    let bx = cx;
+    if (x.align === 'center') bx = cx - toplam / 2;
+    else if (x.align === 'right') bx = cx - toplam;
+    ctx.textAlign = 'left';
+
+    const gecikme = 0.085;
+    kelimeler.forEach((k, i) => {
+      const ke = ease(clamp((local - i * gecikme) / 0.34, 0, 1));
+      if (ke > 0) {
+        ctx.globalAlpha = a * ke;
+        ctx.fillText(k, bx, cy + (1 - ke) * px * 0.55);
+      }
+      bx += genislikler[i] + bosluk;
+    });
+  } else {
+    lines.forEach((l, i) => ctx.fillText(l, cx, cy + i * lh));
+  }
+
   ctx.shadowBlur = 0;
   ctx.shadowOffsetY = 0;
   ctx.restore();
   ctx.globalAlpha = 1;
+}
+
+/* easeOutBack: hedefi biraz asip geri oturan yaylanma */
+function geriYay(t) {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 }
 
 function roundRect(x, y, w, h, r) {
