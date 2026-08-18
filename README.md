@@ -25,6 +25,23 @@ landing.css     tanıtım sayfası
 sitenizi gezersiniz, **Kaydı bitir**'e basınca kayıt klip olarak timeline'a düşer.
 Harici program gerekmez (`getDisplayMedia` API'si). Sekme sesi de kaydedilir.
 
+## Stok video (Pexels)
+**Stok** sekmesi, Pexels'in ücretsiz arşivinde arama yapıp bulduğun videoyu tek
+tıkla timeline'a indirir. Hikâye kurgusu için gerçek görüntü lazım olduğunda
+("endişeli insan", "tasarruf", "ofis") kullanılır.
+
+- Ücretsiz API anahtarı gerekir: [pexels.com/api](https://www.pexels.com/api/) →
+  hesap aç → anahtarı kopyala. Kart istemez. Anahtar yalnızca tarayıcıda saklanır.
+- Arama, sahnenin oranına göre otomatik filtrelenir (yatay / dikey / kare).
+- Pexels videoları ticari kullanıma açık, atıf zorunlu değil.
+- Videolar `Access-Control-Allow-Origin: *` ile geldiği için tuvali kirletmez;
+  dışa aktarma etkilenmez.
+
+**Gizlilik notu:** Bu özellik dış bir servise istek atan tek yerdir — arama
+kelimen ve indirilen video Pexels üzerinden geçer. Kendi kaydettiğin görüntüler
+ve kurgun yine hiçbir yere gitmez. Stok sekmesini hiç kullanmazsan editör
+tamamen çevrimdışı çalışmaya devam eder.
+
 ## Açılış klibi
 Videonun önüne, marka bilgilerinden **çizilen** animasyonlu bir açılış konur —
 dosya değil, her karesi canlı hesaplanan bir çizim. Şablon seçtiğinde kendiliğinden

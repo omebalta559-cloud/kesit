@@ -1402,6 +1402,137 @@ function applyTemplate(tpl) {
 }
 
 /* =========================================================
+   Pexels stok video araması
+   Hikâye kurgusu için gerçek görüntü lazım: "endişeli insan",
+   "para", "ofis" gibi sahneleri buradan bulup timeline'a atıyoruz.
+   Videolar CORS başlığıyla geldiği için tuvali kirletmez, dışa
+   aktarma etkilenmez. Anahtar tarayıcıda saklanır.
+   ========================================================= */
+const pexelsKey = () => { try { return localStorage.getItem('kesit.pexels') || ''; } catch (e) { return ''; } };
+
+const STOK_ONERI = ['ofis', 'para', 'tasarruf', 'endişeli', 'başarı', 'ekip', 'telefon', 'şehir'];
+let stokSonuc = [];
+let stokYukleniyor = false;
+
+function renderStock() {
+  const box = $('#stockPanel');
+  if (!box) return;
+
+  if (!pexelsKey()) {
+    box.innerHTML = `
+      <p class="hint">Hikâye kurgusu için gerçek görüntü lazım. Pexels'in ücretsiz
+      arşivinden arayıp doğrudan timeline'a ekleyebilirsin — ticari kullanım serbest,
+      atıf zorunlu değil.</p>
+      <div class="field"><label>Pexels API anahtarı</label>
+        <input type="text" id="pexKey" placeholder="anahtarı buraya yapıştır"></div>
+      <div class="btn-row"><button class="btn btn-primary" id="pexSave">Kaydet</button></div>
+      <p class="mini">Anahtar almak için: <b>pexels.com/api</b> → ücretsiz hesap aç →
+      anahtarı kopyala. 2 dakika sürer, kart istemez. Anahtar yalnızca bu tarayıcıda saklanır.</p>`;
+    $('#pexSave').onclick = () => {
+      const v = $('#pexKey').value.trim();
+      if (!v) return;
+      try { localStorage.setItem('kesit.pexels', v); } catch (e) {}
+      renderStock();
+    };
+    return;
+  }
+
+  box.innerHTML = `
+    <div class="stok-ara">
+      <input type="text" id="pexQ" placeholder="ne arıyorsun? örn. tasarruf" value="">
+      <button class="btn btn-primary" id="pexGo">Ara</button>
+    </div>
+    <div class="stok-oneri">${STOK_ONERI.map((k) => `<button data-k="${k}">${k}</button>`).join('')}</div>
+    <p class="mini">Yön: <b>${yonEtiketi()}</b> — sahnenin oranına uyanlar aranıyor.</p>
+    <div id="pexList" class="stok-list"></div>
+    <div class="btn-row"><button class="btn" id="pexReset">Anahtarı değiştir</button></div>`;
+
+  $('#pexGo').onclick = () => stockSearch($('#pexQ').value.trim());
+  $('#pexQ').addEventListener('keydown', (e) => { if (e.key === 'Enter') stockSearch(e.target.value.trim()); });
+  box.querySelectorAll('.stok-oneri button').forEach((b) => {
+    b.onclick = () => { $('#pexQ').value = b.dataset.k; stockSearch(b.dataset.k); };
+  });
+  $('#pexReset').onclick = () => {
+    try { localStorage.removeItem('kesit.pexels'); } catch (e) {}
+    stokSonuc = [];
+    renderStock();
+  };
+
+  if (stokSonuc.length) cizStokListe();
+}
+
+function yonEtiketi() {
+  if (S.W > S.H) return 'yatay';
+  if (S.W < S.H) return 'dikey';
+  return 'kare';
+}
+
+async function stockSearch(q) {
+  if (!q || stokYukleniyor) return;
+  const list = $('#pexList');
+  list.innerHTML = '<p class="mini">aranıyor…</p>';
+  stokYukleniyor = true;
+  const yon = S.W > S.H ? 'landscape' : (S.W < S.H ? 'portrait' : 'square');
+  try {
+    const r = await fetch(
+      `https://api.pexels.com/videos/search?query=${encodeURIComponent(q)}&per_page=16&orientation=${yon}`,
+      { headers: { Authorization: pexelsKey() } });
+    if (r.status === 401) { list.innerHTML = '<p class="mini">Anahtar geçersiz. “Anahtarı değiştir” ile yenisini gir.</p>'; return; }
+    if (!r.ok) { list.innerHTML = `<p class="mini">Arama başarısız (${r.status}).</p>`; return; }
+    const d = await r.json();
+    stokSonuc = d.videos || [];
+    cizStokListe();
+  } catch (e) {
+    list.innerHTML = '<p class="mini">Bağlantı kurulamadı. İnternetini kontrol et.</p>';
+  } finally {
+    stokYukleniyor = false;
+  }
+}
+
+function cizStokListe() {
+  const list = $('#pexList');
+  if (!list) return;
+  if (!stokSonuc.length) { list.innerHTML = '<p class="mini">Sonuç yok, başka bir kelime dene.</p>'; return; }
+  list.innerHTML = stokSonuc.map((v, i) => `
+    <div class="stok-kart" data-i="${i}">
+      <img src="${v.image}" alt="" loading="lazy">
+      <span class="stok-sure">${Math.round(v.duration)}sn</span>
+      <span class="stok-ad">${esc((v.user && v.user.name) || '')}</span>
+    </div>`).join('');
+  list.querySelectorAll('.stok-kart').forEach((el) => {
+    el.onclick = () => stockAdd(stokSonuc[+el.dataset.i], el);
+  });
+}
+
+/* Uygun boyuttaki mp4'u sec: cok buyugu bosuna indirilmesin */
+function stokDosyaSec(v) {
+  const mp4 = (v.video_files || []).filter((f) => f.file_type === 'video/mp4' && f.link);
+  if (!mp4.length) return null;
+  const uygun = mp4.filter((f) => f.width >= 1100 && f.width <= 2000);
+  const havuz = uygun.length ? uygun : mp4;
+  return havuz.sort((a, b) => a.width - b.width)[havuz.length > 1 && uygun.length ? 0 : havuz.length - 1] || havuz[0];
+}
+
+async function stockAdd(v, el) {
+  const dosya = stokDosyaSec(v);
+  if (!dosya) { alert('Bu videonun indirilebilir bir sürümü yok.'); return; }
+  el.classList.add('yukleniyor');
+  try {
+    const r = await fetch(dosya.link);
+    if (!r.ok) throw new Error(r.status);
+    const blob = await r.blob();
+    const ad = `stok-${v.id}.mp4`;
+    loadFiles([new File([blob], ad, { type: 'video/mp4' })], 'video');
+    el.classList.remove('yukleniyor');
+    el.classList.add('eklendi');
+    setTimeout(() => el.classList.remove('eklendi'), 1500);
+  } catch (e) {
+    el.classList.remove('yukleniyor');
+    alert('Video indirilemedi. Başka bir tanesini dene.');
+  }
+}
+
+/* =========================================================
    Ekran kaydı — kullanıcı kendi sitesini gezerken kaydeder
    ========================================================= */
 let screenRec = null, screenChunks = [], screenStream = null;
@@ -1462,6 +1593,7 @@ $('#fileImage')?.addEventListener('change', (e) => {
 refreshLogo();
 renderMedia();
 renderBrand();
+renderStock();
 buildInspector();
 renderTemplates();
 renderTimeline();

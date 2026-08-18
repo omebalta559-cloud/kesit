@@ -257,3 +257,10 @@ code{
 @media (min-width:901px) and (max-width:1050px){
   .tpls,.feats{grid-template-columns:repeat(2,1fr)}
 }
+
+.priv-not{
+  font-size:13.5px;color:var(--txt-3);max-width:60ch;margin:0 auto 24px;
+  padding:10px 14px;background:var(--bg-3);border-radius:8px;
+  border-left:2px solid var(--line-2);text-align:left;
+}
+.priv-not b{color:var(--txt-2)}
